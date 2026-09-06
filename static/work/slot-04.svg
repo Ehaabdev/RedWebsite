@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" width="1200" height="750" role="img" aria-label="Placeholder artwork 4">
+<defs>
+  <linearGradient id="g4a" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="hsl(208 22% 34%)"/>
+    <stop offset="1" stop-color="hsl(208 26% 19%)"/>
+  </linearGradient>
+  <radialGradient id="g4b"><stop offset="0" stop-color="hsl(234 30% 62%)" stop-opacity="0.9"/><stop offset="1" stop-color="hsl(234 30% 62%)" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="1200" height="750" fill="url(#g4a)"/>
+<circle cx="263" cy="516" r="490" fill="url(#g4b)" opacity="0.49"/>
+<circle cx="1009" cy="115" r="457" fill="url(#g4b)" opacity="0.39"/>
+<circle cx="1169" cy="605" r="427" fill="url(#g4b)" opacity="0.59"/>
+<circle cx="1044" cy="654" r="389" fill="url(#g4b)" opacity="0.74"/>
+<circle cx="561" cy="585" r="452" fill="url(#g4b)" opacity="0.46"/>
+<rect x="324" y="643" width="981" height="39" fill="#e8edf5" opacity="0.12"/>
+<rect x="379" y="410" width="922" height="32" fill="#e8edf5" opacity="0.14"/>
+<rect x="531" y="86" width="287" height="52" fill="#e8edf5" opacity="0.14"/>
+<rect x="977" y="450" width="344" height="44" fill="#e8edf5" opacity="0.13"/>
+<rect x="-23" y="2" width="835" height="54" fill="#e8edf5" opacity="0.17"/>
+<circle cx="958" cy="175" r="70" fill="none" stroke="#f2f5fa" stroke-width="1.18" opacity="0.28"/>
+<circle cx="958" cy="175" r="117" fill="none" stroke="#f2f5fa" stroke-width="1.29" opacity="0.26"/>
+<circle cx="958" cy="175" r="150" fill="none" stroke="#f2f5fa" stroke-width="1.63" opacity="0.14"/>
+<circle cx="958" cy="175" r="164" fill="none" stroke="#f2f5fa" stroke-width="1.09" opacity="0.26"/>
+<circle cx="958" cy="175" r="294" fill="none" stroke="#f2f5fa" stroke-width="1.17" opacity="0.17"/>
+<circle cx="958" cy="175" r="216" fill="none" stroke="#f2f5fa" stroke-width="0.83" opacity="0.22"/>
+<circle cx="958" cy="175" r="398" fill="none" stroke="#f2f5fa" stroke-width="1.34" opacity="0.28"/>
+<circle cx="958" cy="175" r="356" fill="none" stroke="#f2f5fa" stroke-width="2.05" opacity="0.23"/>
+<circle cx="958" cy="175" r="416" fill="none" stroke="#f2f5fa" stroke-width="1.36" opacity="0.28"/>
+<rect x="543" y="680" width="234" height="4" fill="#e64749" opacity="0.9"/>
+<rect x="0" y="560" width="1200" height="190" fill="#0b0e13" opacity="0.55"/>
+<g font-family="ui-monospace, monospace" fill="#f2f5fa" text-anchor="middle">
+  <text x="600" y="654" font-size="34" letter-spacing="8" opacity="0.92">SLOT 04</text>
+  <text x="600" y="698" font-size="19" letter-spacing="5" opacity="0.6">PLACEHOLDER — REPLACE WITH REAL WORK</text>
+</g>
+</svg>

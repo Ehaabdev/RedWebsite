@@ -1,0 +1,160 @@
+/* =========================================================================
+   Design tokens.
+
+   Palette and motion easings are the values read off daoism.systems, since
+   matching that instrument-panel look is the brief. Everything else — the
+   type scale, spacing, and layout rhythm — is ours.
+   ========================================================================= */
+
+:root {
+	/* --- surface --- */
+	--bg-primary: #20242d;
+	--bg-deep: #161920;
+	--bg-raise: rgba(255, 255, 255, 0.055);
+	--bg-raise-hi: rgba(255, 255, 255, 0.12);
+
+	/* --- ink --- */
+	--ink: #e9edf5;
+	--hud: rgba(255, 255, 255, 0.55);
+	/* Text. Meets 4.5:1 on the dark ground — .micro is real copy (the section
+	   index, the notes), not decoration. */
+	--hud-dim: rgba(255, 255, 255, 0.5);
+	/* Decorative hairlines only: corner ticks, ruler ticks. Contrast rules do
+	   not apply to these, and forcing them to 4.5:1 makes the HUD shout. */
+	--hud-line: rgba(255, 255, 255, 0.26);
+	--rule: rgba(255, 255, 255, 0.13);
+
+	/* --- signal. State and action only. Never decoration. --- */
+	--accent: #e64749;
+	--accent-soft: rgba(230, 71, 73, 0.16);
+
+	/* --- type --- */
+	--font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+	--font-display: 'Chakra Petch', var(--font-mono);
+
+	--t-display: clamp(2.5rem, 7.6vw, 7.25rem);
+	--t-title: clamp(1.75rem, 3.4vw, 3.25rem);
+	--t-lede: clamp(0.95rem, 1.25vw, 1.1875rem);
+	--t-body: 1.0625rem;
+	--t-meta: 0.6875rem;
+	--t-micro: 0.625rem;
+
+	--track-meta: 0.1em;
+	--track-micro: 0.13em;
+
+	/* --- layout --- */
+	--gutter: clamp(1.5rem, 4vw, 3rem);
+	--edge: 1.5rem;
+	--horizon: 47%;
+
+	/* --- motion --- */
+	--ease-reveal: cubic-bezier(0.19, 1, 0.22, 1);
+	--ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+	--dur-fast: 0.35s;
+	--dur-base: 0.5s;
+	--dur-reveal: 0.75s;
+}
+
+*,
+*::before,
+*::after {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+html,
+body {
+	height: 100%;
+}
+
+/* The document never scrolls; all scrolling lives in .page-scroll-wrapper. */
+body {
+	overflow: hidden;
+	background: var(--bg-primary);
+	color: var(--hud);
+	font-family: var(--font-mono);
+	font-size: var(--t-body);
+	font-weight: 400;
+	line-height: 1.55;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+/* Custom cursor replaces the pointer; restore it for anyone who can't see ours. */
+@media (hover: hover) and (pointer: fine) {
+	body.has-cursor {
+		cursor: none;
+	}
+	/* ...except over text, where the I-beam carries information a dot cannot:
+	   where the caret will land and what is selected. Cursor.svelte hides its
+	   own dot over the same elements so there is only ever one pointer. */
+	body.has-cursor input,
+	body.has-cursor textarea {
+		cursor: text;
+	}
+}
+
+h1,
+h2,
+h3 {
+	font-family: var(--font-display);
+	font-weight: 700;
+	line-height: 0.88;
+	letter-spacing: 0.005em;
+	color: var(--ink);
+	text-transform: uppercase;
+	text-wrap: balance;
+}
+
+button {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: none;
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+}
+
+/* Visible keyboard focus everywhere, without a mouse-click ring. */
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 3px;
+}
+
+/* --- shared utility classes ------------------------------------------- */
+
+.meta {
+	font-size: var(--t-meta);
+	letter-spacing: var(--track-meta);
+	color: var(--hud);
+	line-height: 1.7;
+}
+
+.micro {
+	font-size: var(--t-micro);
+	letter-spacing: var(--track-micro);
+	text-transform: uppercase;
+	color: var(--hud-dim);
+}
+
+.lede {
+	font-size: var(--t-lede);
+	line-height: 1.62;
+	max-width: 46ch;
+	color: var(--hud);
+}
+
+/* --- motion floor ------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}

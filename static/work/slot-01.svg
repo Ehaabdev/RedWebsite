@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" width="1200" height="750" role="img" aria-label="Placeholder artwork 1">
+<defs>
+  <linearGradient id="g1a" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="hsl(208 22% 34%)"/>
+    <stop offset="1" stop-color="hsl(208 26% 19%)"/>
+  </linearGradient>
+  <radialGradient id="g1b"><stop offset="0" stop-color="hsl(234 30% 62%)" stop-opacity="0.9"/><stop offset="1" stop-color="hsl(234 30% 62%)" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="1200" height="750" fill="url(#g1a)"/>
+<circle cx="38" cy="222" r="301" fill="url(#g1b)" opacity="0.67"/>
+<circle cx="1078" cy="39" r="282" fill="url(#g1b)" opacity="0.57"/>
+<circle cx="629" cy="65" r="302" fill="url(#g1b)" opacity="0.64"/>
+<rect x="-7" y="163" width="764" height="9" fill="#e8edf5" opacity="0.13"/>
+<rect x="601" y="199" width="514" height="34" fill="#e8edf5" opacity="0.14"/>
+<rect x="78" y="379" width="693" height="13" fill="#e8edf5" opacity="0.15"/>
+<rect x="6" y="179" width="923" height="36" fill="#e8edf5" opacity="0.09"/>
+<rect x="-39" y="708" width="537" height="22" fill="#e8edf5" opacity="0.18"/>
+<rect x="433" y="218" width="414" height="29" fill="#e8edf5" opacity="0.14"/>
+<circle cx="432" cy="230" r="70" fill="none" stroke="#f2f5fa" stroke-width="1.43" opacity="0.16"/>
+<circle cx="432" cy="230" r="99" fill="none" stroke="#f2f5fa" stroke-width="2.12" opacity="0.21"/>
+<circle cx="432" cy="230" r="150" fill="none" stroke="#f2f5fa" stroke-width="0.94" opacity="0.13"/>
+<circle cx="432" cy="230" r="182" fill="none" stroke="#f2f5fa" stroke-width="1.62" opacity="0.21"/>
+<circle cx="432" cy="230" r="268" fill="none" stroke="#f2f5fa" stroke-width="1.37" opacity="0.13"/>
+<rect x="428" y="648" width="225" height="4" fill="#e64749" opacity="0.9"/>
+<rect x="0" y="560" width="1200" height="190" fill="#0b0e13" opacity="0.55"/>
+<g font-family="ui-monospace, monospace" fill="#f2f5fa" text-anchor="middle">
+  <text x="600" y="654" font-size="34" letter-spacing="8" opacity="0.92">SLOT 01</text>
+  <text x="600" y="698" font-size="19" letter-spacing="5" opacity="0.6">PLACEHOLDER — REPLACE WITH REAL WORK</text>
+</g>
+</svg>

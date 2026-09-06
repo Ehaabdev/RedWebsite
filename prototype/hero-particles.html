@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pointer Repulsion Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-primary:#20242d;
+    --accent-primary:#e64749;
+    --hud:rgba(255,255,255,.55);
+    --hud-dim:rgba(255,255,255,.25);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#000}
+  body{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    color:var(--hud);
+    cursor:none;
+  }
+  canvas{display:block}
+
+  /* ---- HUD chrome (DOM, not WebGL) ---- */
+  .hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+  .tick{position:absolute;width:11px;height:11px;opacity:.5}
+  .tick::before,.tick::after{content:"";position:absolute;background:var(--hud-dim)}
+  .tick::before{left:50%;top:0;width:1px;height:100%;transform:translateX(-50%)}
+  .tick::after{top:50%;left:0;height:1px;width:100%;transform:translateY(-50%)}
+  .tick.tl{top:24px;left:24px}  .tick.tr{top:24px;right:24px}
+  .tick.bl{bottom:24px;left:24px} .tick.br{bottom:24px;right:24px}
+
+  .label{position:absolute;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+  .label.tl{top:20px;left:48px}
+  .label.tr{top:20px;right:48px;text-align:right}
+  .chip{
+    position:absolute;bottom:22px;left:48px;font-size:11px;letter-spacing:.1em;
+    background:rgba(255,255,255,.07);padding:6px 12px;border-radius:3px;
+  }
+  .chip b{color:#fff;font-weight:500}
+  .readout{position:absolute;bottom:22px;right:48px;font-size:11px;letter-spacing:.1em;text-align:right;line-height:1.7}
+  .readout span{color:#fff}
+
+  /* ---- trailing cursor ---- */
+  #cursor{
+    position:fixed;top:0;left:0;width:13px;height:13px;border-radius:50%;
+    background:#fff;pointer-events:none;z-index:10;
+    transform:translate(-50%,-50%);will-change:transform;mix-blend-mode:difference;
+  }
+
+  /* ---- shape switcher ---- */
+  .shapes{
+    position:fixed;top:50%;left:24px;transform:translateY(-50%);
+    display:flex;flex-direction:column;gap:6px;z-index:20;pointer-events:auto;
+  }
+  .shapes button{
+    font:inherit;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    background:rgba(255,255,255,.06);color:var(--hud);border:1px solid rgba(255,255,255,.1);
+    padding:8px 12px;border-radius:3px;cursor:pointer;transition:.25s cubic-bezier(.22,1,.36,1);
+    text-align:left;min-width:104px;
+  }
+  .shapes button:hover{background:rgba(255,255,255,.12);color:#fff}
+  .shapes button[data-on="1"]{border-color:var(--accent-primary);color:#fff;background:rgba(230,71,73,.15)}
+  .hint{
+    position:fixed;top:calc(50% + 116px);left:24px;font-size:10px;
+    letter-spacing:.08em;color:var(--hud-dim);z-index:20;max-width:104px;line-height:1.6
+  }
+
+  /* ---- display type: Chakra Petch, standing in for KH Interference ---- */
+  .display{
+    position:fixed;left:0;right:0;bottom:8vh;z-index:4;pointer-events:none;
+    font-family:"Chakra Petch","IBM Plex Mono",sans-serif;
+    font-weight:700;text-transform:uppercase;
+    font-size:clamp(38px, 7.2vw, 104px);
+    line-height:.92;letter-spacing:.02em;
+    color:#e9edf5;padding:0 48px;
+    mix-blend-mode:screen;
+  }
+  .display span{display:block}
+  .display .r{text-align:right}
+</style>
+</head>
+<body>
+
+<div class="hud">
+  <i class="tick tl"></i><i class="tick tr"></i><i class="tick bl"></i><i class="tick br"></i>
+  <div class="label tl">Pointer repulsion<br>+ spring return</div>
+  <div class="label tr">Prototype<br>WebGL / Points</div>
+  <div class="chip"><b id="shapeName">Octagon</b> &nbsp;•&nbsp; <span id="count">0</span> pts</div>
+  <div class="readout">
+    disturbed <span id="disturbed">0</span>%<br>
+    <span id="fps">0</span> fps
+  </div>
+</div>
+
+<div class="display">
+  <span>Systems</span>
+  <span class="r">In Motion</span>
+</div>
+
+<div class="shapes" id="shapes"></div>
+<div class="hint">Shape is just an array — the physics never changes.</div>
+<div id="cursor"></div>
+
+<script src="./three.min.js"></script>
+<script>
+/* =========================================================================
+   Pointer-repulsion particle field.
+
+   The model, reproduced from daoism.systems:
+     1. every particle has a REST position (the "shape")
+     2. the pointer is a repulsion field with a smooth radial falloff
+     3. particles inside the radius gain outward velocity and scatter
+     4. a damped spring pulls each particle back to its rest position
+
+   The shape and the physics are fully decoupled: a shape is nothing but a
+   Float32Array of rest positions. Swapping shapes touches no physics code.
+   ========================================================================= */
+
+// ---------------------------------------------------------------- tunables
+const P = {
+  radius:      4.0,   // pointer influence radius, world units (~270px on screen)
+  strength:    0.185, // outward impulse at the centre of the field
+  stiffness:   0.020, // spring constant pulling back to rest
+  damping:     0.905, // velocity retained per frame → ~1.2s settle
+  jitter:      0.60,  // randomness in the push — this is what makes it "spray"
+  aberration:  0.0022,// base RGB split
+  nearT:       10.0,  // ray distance at which the object starts (camera z 15)
+  depthRange:  10.0   // over this depth the push falls to 45%, so the front reacts most
+};
+
+// ------------------------------------------------------------------ shapes
+// Each generator fills a lattice of points. Returns Float32Array(n*3).
+
+// Fill an oriented box with a regular lattice of points.
+function slab(out, cx, cy, cz, w, h, d, nx, ny, nz, rotZ, rotY) {
+  const cosZ = Math.cos(rotZ), sinZ = Math.sin(rotZ);
+  const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+  for (let i = 0; i < nx; i++)
+  for (let j = 0; j < ny; j++)
+  for (let k = 0; k < nz; k++) {
+    let x = (i / (nx - 1) - 0.5) * w;
+    let y = (j / (ny - 1) - 0.5) * h;
+    let z = (k / (nz - 1) - 0.5) * d;
+    // rotate Y then Z
+    let x1 = x * cosY + z * sinY, z1 = -x * sinY + z * cosY;
+    let x2 = x1 * cosZ - y * sinZ, y2 = x1 * sinZ + y * cosZ;
+    out.push(cx + x2, cy + y2, cz + z1);
+  }
+}
+
+const SHAPES = {
+  // The original: 8 sectors, each holding a small cluster of tangential slabs.
+  Octagon() {
+    const pts = [];
+    const R = 5.6, SECTORS = 8;
+    for (let s = 0; s < SECTORS; s++) {
+      const a = (s / SECTORS) * Math.PI * 2 + Math.PI / 8;
+      const bx = Math.cos(a) * R, by = Math.sin(a) * R;
+      const tangent = a + Math.PI / 2;
+      const n = 2 + (s % 2);                       // 2–3 slabs per sector
+      for (let c = 0; c < n; c++) {
+        const off = (c - (n - 1) / 2) * 1.15;
+        slab(pts,
+          bx + Math.cos(tangent) * off * 0.9 + Math.cos(a) * (c % 2 ? 0.5 : -0.3),
+          by + Math.sin(tangent) * off * 0.9 + Math.sin(a) * (c % 2 ? 0.5 : -0.3),
+          (c - 1) * 0.5,
+          2.4, 0.62, 0.62,
+          34, 9, 6,
+          tangent + (c - 1) * 0.22, 0);
+      }
+    }
+    return pts;
+  },
+
+  Torus() {
+    const pts = [];
+    const R = 4.6, r = 1.5;
+    const NU = 260, NV = 44, NW = 3;
+    for (let i = 0; i < NU; i++)
+    for (let j = 0; j < NV; j++)
+    for (let k = 0; k < NW; k++) {
+      const u = (i / NU) * Math.PI * 2, v = (j / NV) * Math.PI * 2;
+      const rr = r * (0.72 + 0.28 * (k / (NW - 1 || 1)));
+      pts.push((R + rr * Math.cos(v)) * Math.cos(u),
+               (R + rr * Math.cos(v)) * Math.sin(u),
+               rr * Math.sin(v));
+    }
+    return pts;
+  },
+
+  Grid() {
+    const pts = [];
+    const N = 52, S = 11.5;
+    for (let i = 0; i < N; i++)
+    for (let j = 0; j < N; j++)
+    for (let k = 0; k < 4; k++) {
+      pts.push((i / (N - 1) - 0.5) * S,
+               (j / (N - 1) - 0.5) * S * 0.62,
+               (k / 3 - 0.5) * 0.9);
+    }
+    return pts;
+  },
+
+  Sphere() {
+    const pts = [];
+    const N = 34000, R = 4.9;
+    const phi = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < N; i++) {
+      const y = 1 - (i / (N - 1)) * 2;
+      const rad = Math.sqrt(Math.max(0, 1 - y * y));
+      const th = phi * i;
+      const shell = R * (0.88 + 0.12 * ((i % 4) / 3));
+      pts.push(Math.cos(th) * rad * shell, y * shell, Math.sin(th) * rad * shell);
+    }
+    return pts;
+  }
+};
+
+// ------------------------------------------------------------------- scene
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.setClearColor(0x0a0c10, 1);
+document.body.appendChild(renderer.domElement);
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 0, 15);
+
+// state buffers, allocated once at the largest shape size
+let COUNT = 0;
+let rest, pos, vel, geom, points;
+const MAX = 60000;
+rest = new Float32Array(MAX * 3);
+pos  = new Float32Array(MAX * 3);
+vel  = new Float32Array(MAX * 3);
+
+const pointMat = new THREE.ShaderMaterial({
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  uniforms: {
+    uSize: { value: 3.4 },
+    uPR:   { value: Math.min(devicePixelRatio, 2) }
+  },
+  vertexShader: `
+    uniform float uSize, uPR;
+    varying float vD;
+    void main(){
+      vec4 mv = modelViewMatrix * vec4(position, 1.0);
+      vD = -mv.z;
+      // uSize ≈ device px at 8 world units from camera
+      gl_PointSize = uSize * uPR * (8.0 / vD);
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    varying float vD;
+    void main(){
+      vec2 c = gl_PointCoord - 0.5;
+      float d = dot(c, c);
+      if (d > 0.25) discard;
+      float a = smoothstep(0.25, 0.04, d);
+      float fade = clamp(1.0 - (vD - 8.0) / 22.0, 0.3, 1.0);
+      gl_FragColor = vec4(vec3(0.86, 0.89, 0.95), a * 0.62 * fade);
+    }`
+});
+
+function loadShape(name) {
+  const arr = SHAPES[name]();
+  COUNT = Math.min(Math.floor(arr.length / 3), MAX);
+  for (let i = 0; i < COUNT * 3; i++) {
+    rest[i] = arr[i];
+    // launch from the current position so shape changes morph rather than pop
+    if (!geom) { pos[i] = arr[i]; vel[i] = 0; }
+  }
+  if (!geom) {
+    geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    points = new THREE.Points(geom, pointMat);
+    scene.add(points);
+  }
+  geom.setDrawRange(0, COUNT);
+  geom.attributes.position.needsUpdate = true;
+  document.getElementById('shapeName').textContent = name;
+  document.getElementById('count').textContent = COUNT.toLocaleString();
+}
+
+// ------------------------------------------------------- post: RGB split
+const rt = new THREE.WebGLRenderTarget(1, 1, {
+  minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat
+});
+const postScene  = new THREE.Scene();
+const postCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const postMat = new THREE.ShaderMaterial({
+  uniforms: {
+    tDiffuse: { value: rt.texture },
+    uAmount:  { value: P.aberration },
+    uTime:    { value: 0 }
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float uAmount, uTime;
+    varying vec2 vUv;
+    void main(){
+      vec2 c = vUv - 0.5;
+      float d = length(c);
+      // scanline displacement — the "glitch" band
+      float band = step(0.995, fract(sin(floor(vUv.y * 190.0) * 43.7 + floor(uTime * 3.0)) * 4371.0));
+      vec2 skew = vec2(band * 0.012, 0.0);
+      vec2 off = c * uAmount * (0.55 + d * 2.4) + skew;
+      float r = texture2D(tDiffuse, vUv + off).r;
+      float g = texture2D(tDiffuse, vUv).g;
+      float b = texture2D(tDiffuse, vUv - off).b;
+      float a = max(max(r, g), b);
+      gl_FragColor = vec4(r, g, b, a);
+    }`
+});
+postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
+
+// ----------------------------------------------------------------- pointer
+// The cursor is a RAY through the scene, not a point on a plane.
+//
+// Projecting onto a fixed plane only works for shapes that happen to be flat and
+// centred on it (a ring at z=0). For anything volumetric — a sphere — the plane
+// slices through the middle, so only the silhouette rim is ever in range and the
+// face pointing at you never reacts. Pushing particles away from the ray axis
+// instead means the cursor always disturbs whatever is visually beneath it.
+const pointerPx = { x: -100, y: -100 };
+const cursorEl  = document.getElementById('cursor');
+let cursorX = -100, cursorY = -100, pointerSpeed = 0, lastPx = null;
+let pointerActive = false;
+
+const ray    = new THREE.Raycaster();
+const ndc    = new THREE.Vector2();
+const rayO   = new THREE.Vector3();   // ray origin, in the particle object's local space
+const rayD   = new THREE.Vector3();   // ray direction, likewise
+const invMat = new THREE.Matrix4();
+
+addEventListener('pointermove', e => {
+  pointerPx.x = e.clientX; pointerPx.y = e.clientY;
+  ndc.x =  (e.clientX / innerWidth)  * 2 - 1;
+  ndc.y = -(e.clientY / innerHeight) * 2 + 1;
+  pointerActive = true;
+  if (lastPx) pointerSpeed = Math.hypot(e.clientX - lastPx.x, e.clientY - lastPx.y);
+  lastPx = { x: e.clientX, y: e.clientY };
+});
+addEventListener('pointerleave', () => { pointerActive = false; });
+
+// ------------------------------------------------------------------- loop
+let last = performance.now(), fpsAcc = 0, fpsN = 0, tSec = 0;
+
+function frame(now) {
+  const dt = Math.min((now - last) / 16.667, 3); last = now;
+  tSec = now / 1000;
+
+  const R2 = P.radius * P.radius;
+  let disturbed = 0;
+
+  // Bring the cursor ray into the particle object's local space, so the idle
+  // rotation below can't desynchronise the physics from what's on screen.
+  if (pointerActive) {
+    ray.setFromCamera(ndc, camera);
+    points.updateMatrixWorld();
+    invMat.copy(points.matrixWorld).invert();
+    rayO.copy(ray.ray.origin).applyMatrix4(invMat);
+    rayD.copy(ray.ray.direction).transformDirection(invMat);
+  }
+
+  for (let i = 0; i < COUNT; i++) {
+    const i3 = i * 3;
+    let px = pos[i3], py = pos[i3 + 1], pz = pos[i3 + 2];
+    let vx = vel[i3], vy = vel[i3 + 1], vz = vel[i3 + 2];
+
+    // --- 1. repulsion away from the cursor ray, smooth falloff
+    if (pointerActive) {
+      // closest point on the ray to this particle
+      const wx = px - rayO.x, wy = py - rayO.y, wz = pz - rayO.z;
+      const t = wx * rayD.x + wy * rayD.y + wz * rayD.z;
+      if (t > 0) {
+        const lx = wx - rayD.x * t, ly = wy - rayD.y * t, lz = wz - rayD.z * t;
+        const d2 = lx * lx + ly * ly + lz * lz;
+        if (d2 < R2) {
+          const d = Math.sqrt(d2) || 0.0001;
+          let f = 1 - d / P.radius;
+          f = f * f * P.strength;                   // squared → softer edge
+          // nearer the camera pushes harder, so it reads as touching the front
+          const depth = 1 - Math.min(Math.max((t - P.nearT) / P.depthRange, 0), 1) * 0.55;
+          const j = 1 + (Math.random() - 0.5) * P.jitter;
+          vx += (lx / d) * f * j * depth * dt;
+          vy += (ly / d) * f * j * depth * dt;
+          vz += (lz / d) * f * j * depth * dt;
+        }
+      }
+    }
+
+    // --- 2. damped spring back to rest
+    vx += (rest[i3]     - px) * P.stiffness * dt;
+    vy += (rest[i3 + 1] - py) * P.stiffness * dt;
+    vz += (rest[i3 + 2] - pz) * P.stiffness * dt;
+
+    const damp = Math.pow(P.damping, dt);
+    vx *= damp; vy *= damp; vz *= damp;
+
+    pos[i3]     = px + vx * dt;
+    pos[i3 + 1] = py + vy * dt;
+    pos[i3 + 2] = pz + vz * dt;
+    vel[i3] = vx; vel[i3 + 1] = vy; vel[i3 + 2] = vz;
+
+    if (vx * vx + vy * vy + vz * vz > 0.0004) disturbed++;
+  }
+
+  geom.attributes.position.needsUpdate = true;
+  points.rotation.y = Math.sin(tSec * 0.12) * 0.09;
+  points.rotation.x = Math.cos(tSec * 0.09) * 0.05;
+
+  // aberration reacts to pointer speed
+  pointerSpeed *= 0.9;
+  postMat.uniforms.uAmount.value = P.aberration + Math.min(pointerSpeed, 90) * 0.00007;
+  postMat.uniforms.uTime.value   = tSec;
+
+  renderer.setRenderTarget(rt);
+  renderer.clear();
+  renderer.render(scene, camera);
+  renderer.setRenderTarget(null);
+  renderer.render(postScene, postCamera);
+
+  // trailing cursor — lerped, like the original
+  cursorX += (pointerPx.x - cursorX) * 0.16;
+  cursorY += (pointerPx.y - cursorY) * 0.16;
+  cursorEl.style.transform = `translate(${cursorX}px, ${cursorY}px) translate(-50%,-50%)`;
+
+  fpsAcc += 1000 / Math.max(now - (frame.prev || now - 16), 1); fpsN++; frame.prev = now;
+  if (fpsN >= 30) {
+    document.getElementById('fps').textContent = Math.round(fpsAcc / fpsN);
+    document.getElementById('disturbed').textContent = Math.round(disturbed / COUNT * 100);
+    fpsAcc = 0; fpsN = 0;
+  }
+  requestAnimationFrame(frame);
+}
+
+// ------------------------------------------------------------------ resize
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h);
+  const dpr = Math.min(devicePixelRatio, 2);
+  rt.setSize(w * dpr, h * dpr);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+// -------------------------------------------------------------- shape UI
+const shapesEl = document.getElementById('shapes');
+Object.keys(SHAPES).forEach(name => {
+  const b = document.createElement('button');
+  b.textContent = name;
+  b.dataset.on = name === 'Octagon' ? '1' : '0';
+  b.onclick = () => {
+    loadShape(name);
+    [...shapesEl.children].forEach(c => c.dataset.on = c === b ? '1' : '0');
+  };
+  shapesEl.appendChild(b);
+});
+
+window.__DBG = () => ({
+  rayO: [+rayO.x.toFixed(2), +rayO.y.toFixed(2), +rayO.z.toFixed(2)],
+  rayD: [+rayD.x.toFixed(2), +rayD.y.toFixed(2), +rayD.z.toFixed(2)],
+  pointerActive,
+  pointerPx: { ...pointerPx },
+  count: COUNT,
+  maxSpeed: (() => { let m = 0; for (let i = 0; i < COUNT * 3; i++) m = Math.max(m, Math.abs(vel[i])); return +m.toFixed(4); })(),
+  maxOffset: (() => { let m = 0; for (let i = 0; i < COUNT * 3; i++) m = Math.max(m, Math.abs(pos[i] - rest[i])); return +m.toFixed(4); })()
+});
+
+loadShape('Octagon');
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

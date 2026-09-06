@@ -1,0 +1,43 @@
+- generic [ref=e2]:
+  - dialog "Loading":
+    - generic:
+      - heading "Enter with sound" [level=2]
+      - paragraph: It is a small part of the thing, but it matters.
+      - generic:
+        - button "Start"
+        - button "Continue without sound" [active]
+    - generic: 100 • Ready
+  - main [ref=e8]:
+    - article [ref=e10]:
+      - generic [ref=e12]:
+        - paragraph [ref=e13]: A technology company building products, experiences, and data
+        - paragraph [ref=e14]: City, Country
+      - heading "Products, experiences, and data" [level=1] [ref=e16]:
+        - generic [ref=e17]: Products,
+        - generic [ref=e18]: experiences,
+        - generic [ref=e19]: and data
+    - generic [aria-hidden]:
+      - article:
+        - generic:
+          - paragraph: 01 / 08
+        - generic:
+          - paragraph: Astro builds its own software, designs digital experiences for other companies and people, and is developing products around data.
+          - heading [level=1]:
+            - generic: A new
+            - generic: technology
+            - generic: company
+  - button "Back to top" [ref=e21] [cursor=pointer]:
+    - generic [ref=e22]: Astro
+  - generic [ref=e23]:
+    - button "Menu" [ref=e24] [cursor=pointer]
+    - button "Contact" [ref=e25] [cursor=pointer]
+  - generic:
+    - separator
+    - button "Jump to a position in the page" [ref=e26] [cursor=pointer]
+    - generic: 00 • Astro
+    - generic:
+      - generic: Founded 20XX
+      - generic:
+        - time: 11:52
+        - generic: UTC+3
+    - paragraph: Scroll
